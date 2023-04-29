@@ -59,24 +59,12 @@ public class Concert{
         this.id = id;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
     public void setTitle(String title) {
         this.title = title;
     }
 
-    public String getImageName() {
-        return imageName;
-    }
-
     public void setImageName(String imageName) {
         this.imageName = imageName;
-    }
-
-    public String getBlurb() {
-        return blurb;
     }
 
     public void setBlurb(String blurb) {
