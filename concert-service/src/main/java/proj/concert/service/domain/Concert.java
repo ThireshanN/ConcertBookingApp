@@ -19,7 +19,7 @@ public class Concert{
     private Long id;
 
     @Column(nullable = false)
-    private String name;
+    private String concertName;
 
     private Set<Performer> performers;
 
@@ -38,11 +38,11 @@ public class Concert{
     }
 
     public String getName() {
-        return name;
+        return concertName;
     }
 
     public void setName(String title) {
-        this.name = name;
+        this.concertName = concertName;
     }
 
     public Set<LocalDateTime> getDates() {
@@ -51,6 +51,14 @@ public class Concert{
 
     public void setDates(Set<LocalDateTime> dates) {
         this.dates = dates;
+    }
+
+    public Set<Performer> getPerformers() {
+        return performers;
+    }
+
+    public void setPerformers(Set<Performer> performers) {
+        this.performers = performers;
     }
 
 }
