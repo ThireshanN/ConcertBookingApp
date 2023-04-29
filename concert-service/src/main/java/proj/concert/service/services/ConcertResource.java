@@ -39,6 +39,7 @@ public class ConcertResource {
             }
 
             GenericEntity<List<ConcertSummaryDTO>> entity = new GenericEntity<List<ConcertSummaryDTO>>(summaries) {};
+
             return Response.ok(entity).build();
         } finally {
             if (em.getTransaction().isActive()) {
