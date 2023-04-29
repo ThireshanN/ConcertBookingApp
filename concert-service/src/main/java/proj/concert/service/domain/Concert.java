@@ -17,19 +17,12 @@ public class Concert{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column( name = "ID")
     private Long id;
-    private String title;
-
-    @Column(columnDefinition = "TEXT")
-    private String blurb;
 
     @Column(name = "ImgName")
     private String imageName;
 
     @Column(name = "TITLE", nullable = false)
     private String title;
-
-    @Column(name = "IMAGE_NAME")
-    private String imageName;
 
     @Column(columnDefinition = "TEXT", name = "BLURB")
     private String blurb;
