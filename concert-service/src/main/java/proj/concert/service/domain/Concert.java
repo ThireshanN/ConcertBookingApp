@@ -1,23 +1,29 @@
 package proj.concert.service.domain;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.*;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 @Entity
 @Table(name = "CONCERTS")
 public class Concert{
 
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column( name = "ID")
     private Long id;
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String blurb;
+
+    @Column(name = "ImgName")
+    private String imageName;
 
     @Column(name = "TITLE", nullable = false)
     private String title;
@@ -92,5 +98,20 @@ public class Concert{
     public void setPerformers(Set<Performer> performers) {
         this.performers = performers;
     }
+
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getImageName() {
+        return imageName;
+    }
+
+    public String getBlurb() {
+
+        return blurb;
+    }
+
 
 }

@@ -1,15 +1,11 @@
 package proj.concert.service.domain;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.*;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
+import proj.concert.common.types.Genre;
 
 
 @Entity
@@ -19,8 +15,17 @@ public class Performer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    private Genre genre;
+
+    @Column(columnDefinition = "TEXT")
+    private String blurb;
+
     @Column(nullable = false)
     private String name;
+
+    @Column(name = "ImgName")
+    private String imageName;
 
     @ManyToMany(mappedBy = "performers")
     private Set<Concert> concerts = new HashSet<>();
@@ -43,4 +48,21 @@ public class Performer {
     public void setName(String name) {
         this.name = name;
     }
+
+
+
+    public String getImageName() {
+        return imageName;
+    }
+
+    public Genre getGenre() {
+        return genre;
+    }
+
+    public String getBlurb() {
+        return blurb;
+    }
+
+
+
 }
