@@ -4,6 +4,9 @@ import proj.concert.common.dto.ConcertSummaryDTO;
 import proj.concert.common.dto.ConcertDTO;
 import proj.concert.service.domain.Concert;
 import proj.concert.service.mapper.ConcertMapper;
+import proj.concert.service.domain.Performer;
+import proj.concert.common.dto.PerformerDTO;
+import proj.concert.service.mapper.PerformerMapper;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
@@ -11,6 +14,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -46,7 +50,7 @@ public class ConcertResource {
             em.getTransaction().commit();
             GenericEntity<List<ConcertDTO>> out = new GenericEntity<List<ConcertDTO>>(concertDTOS) {};
             return Response.ok(out).build();
-        } catch (Exception e) {
+        } catch (Exception e) { //block to handle exceptions, rolling back the transaction in case of an error.
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
@@ -54,6 +58,32 @@ public class ConcertResource {
             return Response.serverError().entity("Error retrieving concerts: " + e.getMessage()).build();
         } finally {
             em.close();
+        }
+    }
+
+    @GET
+    @Path("/concerts/{id}")
+    public Response getConcert(@PathParam("id") long id) {
+        EntityManager entityManager = PersistenceManager.instance().createEntityManager();
+
+        try {
+            entityManager.getTransaction().begin();
+            Concert foundConcert = entityManager.find(Concert.class, id);
+            entityManager.getTransaction().commit();
+
+            if (foundConcert == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            ConcertDTO concertDTO = ConcertMapper.toDTO(foundConcert);
+            return Response.ok(concertDTO).build();
+        } catch (Exception e) { //block to handle exceptions, rolling back the transaction in case of an error.
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        } finally {
+            entityManager.close();
         }
     }
 
@@ -81,6 +111,64 @@ public class ConcertResource {
                 em.getTransaction().rollback();
             }
             em.close();
+        }
+    }
+
+    @GET
+    @Path("/performers")
+    public Response getAllPerformers() {
+        EntityManager entityManager = PersistenceManager.instance().createEntityManager();
+
+        try {
+            entityManager.getTransaction().begin();
+            List<Performer> performers = entityManager.createQuery("SELECT p FROM Performer p", Performer.class).getResultList();
+            entityManager.getTransaction().commit();
+
+            if (performers.isEmpty()) {
+                return Response.noContent().build();
+            }
+
+            List<PerformerDTO> performerDTOs = new ArrayList<>();
+
+            for(Performer performer:performers){
+                performerDTOs.add(PerformerMapper.toDTO(performer));
+            }
+            GenericEntity<List<PerformerDTO>> entity = new GenericEntity<List<PerformerDTO>>(performerDTOs) {};
+
+            return Response.ok(entity).build();
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    @GET
+    @Path("/performers/{id}")
+    public Response getPerformer(@PathParam("id") long id) {
+        EntityManager entityManager = PersistenceManager.instance().createEntityManager();
+
+        try {
+            entityManager.getTransaction().begin();
+            Performer foundPerformer = entityManager.find(Performer.class, id);
+            entityManager.getTransaction().commit();
+
+            if (foundPerformer == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            PerformerDTO performerDTO = PerformerMapper.toDTO(foundPerformer);
+            return Response.ok(performerDTO).build();
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        } finally {
+            entityManager.close();
         }
     }
 
