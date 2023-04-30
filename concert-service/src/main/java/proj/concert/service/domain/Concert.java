@@ -1,17 +1,20 @@
 package proj.concert.service.domain;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.*;
 
+import proj.concert.common.jackson.LocalDateTimeDeserializer;
+import proj.concert.common.jackson.LocalDateTimeSerializer;
 
 @Entity
 @Table(name = "CONCERTS")
 public class Concert{
-
-
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,7 +66,8 @@ public class Concert{
     public void setBlurb(String blurb) {
         this.blurb = blurb;
     }
-
+    @JsonSerialize(contentUsing = LocalDateTimeSerializer.class)
+    @JsonDeserialize(contentUsing = LocalDateTimeDeserializer.class)
     public Set<LocalDateTime> getDates() {
         return dates;
     }
