@@ -9,22 +9,24 @@ import proj.concert.common.types.Genre;
 
 
 @Entity
-@Table(name = "performers")
+@Table(name = "PERFORMERS")
 public class Performer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column( name = "ID")
     private Long id;
 
     @Enumerated(EnumType.STRING)
+    @Column( name = "GENRE")
     private Genre genre;
 
-    @Column(columnDefinition = "TEXT")
+    @Column( columnDefinition = "TEXT", name = "BLURB")
     private String blurb;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name="NAME")
     private String name;
 
-    @Column(name = "ImgName")
+    @Column(name = "IMGNAME")
     private String imageName;
 
     @ManyToMany(mappedBy = "performers")
@@ -49,8 +51,6 @@ public class Performer {
         this.name = name;
     }
 
-
-
     public String getImageName() {
         return imageName;
     }
@@ -63,6 +63,8 @@ public class Performer {
         return blurb;
     }
 
-
+    public void setBlurb(String blurb) {
+        this.blurb = blurb;
+    }
 
 }
