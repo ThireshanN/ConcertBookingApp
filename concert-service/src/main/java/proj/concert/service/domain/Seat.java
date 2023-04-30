@@ -10,18 +10,26 @@ import java.util.Objects;
 public class Seat{
 
 	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column( name = "ID")
+	private Long ID;
+
+	@Column ( name = "LABEL")
 	private String label;
+	@Column ( name = "ISBOOKED")
 	private boolean isBooked;
-	@Id
+
+	@Column ( name = "DATE")
 	private LocalDateTime date;
-	private BigDecimal cost;
+	@Column ( name = "PRICE")
+	private BigDecimal price;
 
 
 	public Seat(String label, boolean isBooked, LocalDateTime date, BigDecimal cost) {
 		this.label = label;
 		this.isBooked = isBooked;
 		this.date = date;
-		this.cost = cost;
+		this.price = price;
 	}	
 	
 	public Seat() {}
@@ -51,11 +59,11 @@ public class Seat{
 	}
 
 	public BigDecimal getPrice() {
-		return cost;
+		return price;
 	}
 
 	public void setPrice(BigDecimal price) {
-		this.cost = price;
+		this.price = price;
 	}
 
 }
