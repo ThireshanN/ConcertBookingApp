@@ -3,7 +3,9 @@ package proj.concert.service.services;
 import org.apache.log4j.Priority;
 import proj.concert.common.dto.ConcertSummaryDTO;
 import proj.concert.common.dto.ConcertDTO;
+import proj.concert.common.dto.UserDTO;
 import proj.concert.service.domain.Concert;
+import proj.concert.service.domain.User;
 import proj.concert.service.mapper.ConcertMapper;
 import proj.concert.service.domain.Performer;
 import proj.concert.common.dto.PerformerDTO;
@@ -11,13 +13,11 @@ import proj.concert.service.mapper.PerformerMapper;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.PathParam;
+import javax.persistence.TypedQuery;
+import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
@@ -181,4 +181,24 @@ public class ConcertResource {
         }
     }
 
+    @POST
+    @Path("/login")
+    public Response login(UserDTO creds) {
+
+        String userName = creds.getUsername();
+        String userPassword = creds.getPassword();
+
+        TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
+        userQuery.setParameter("username", userName);
+        userQuery.setParameter("password", userPassword);
+        List<User> users = userQuery.getResultList();
+
+        if (!users.isEmpty()) {
+            Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth","auth"));
+            return builder.build();
+        }
+
+        Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
+        return builder.build();
+    }
 }
