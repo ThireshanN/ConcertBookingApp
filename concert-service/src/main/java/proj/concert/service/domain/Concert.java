@@ -18,7 +18,7 @@ public class Concert{
     @Column( name = "ID")
     private Long id;
 
-    @Column(name = "ImgName")
+    @Column(name = "IMAGE_NAME")
     private String imageName;
 
     @Column(name = "TITLE", nullable = false)
@@ -79,7 +79,6 @@ public class Concert{
     public void setPerformers(Set<Performer> performers) {
         this.performers = performers;
     }
-
 
     public String getTitle() {
         return title;

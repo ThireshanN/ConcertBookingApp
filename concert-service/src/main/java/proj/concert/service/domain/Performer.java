@@ -26,7 +26,7 @@ public class Performer {
     @Column(nullable = false, name="NAME")
     private String name;
 
-    @Column(name = "IMGNAME")
+    @Column(name = "IMAGE_NAME")
     private String imageName;
 
     @ManyToMany(mappedBy = "performers")
