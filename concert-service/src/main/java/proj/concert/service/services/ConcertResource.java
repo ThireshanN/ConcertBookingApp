@@ -1,5 +1,6 @@
 package proj.concert.service.services;
 
+import org.apache.log4j.Priority;
 import proj.concert.common.dto.ConcertSummaryDTO;
 import proj.concert.common.dto.ConcertDTO;
 import proj.concert.service.domain.Concert;
@@ -90,9 +91,11 @@ public class ConcertResource {
     private EntityManager em = PersistenceManager.instance().createEntityManager();
 
     @GET
-    @Path("/concert-summaries")
+    @Path("/concerts/summaries")
     public Response getConcertSummaries() {
+        EntityManager em = PersistenceManager.instance().createEntityManager();
         try {
+            em.getTransaction().begin(); // Start a transaction
             List<ConcertSummaryDTO> summaries = em.createQuery("SELECT c FROM Concert c", Concert.class)
                     .setLockMode(LockModeType.PESSIMISTIC_READ)
                     .getResultList().stream()
@@ -100,12 +103,18 @@ public class ConcertResource {
                     .collect(Collectors.toList());
 
             if (summaries.isEmpty()) {
+                LOGGER.log(Priority.WARN, "No concert summaries found.");
                 return Response.noContent().build();
             }
 
             GenericEntity<List<ConcertSummaryDTO>> entity = new GenericEntity<List<ConcertSummaryDTO>>(summaries) {};
 
+            em.getTransaction().commit(); // Commit the transaction
             return Response.ok(entity).build();
+        } catch (Exception e) {
+            // Log the exception and return an appropriate error response
+            LOGGER.log(Priority.ERROR, "An error occurred while processing the request.", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("An error occurred while processing the request.").build();
         } finally {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
