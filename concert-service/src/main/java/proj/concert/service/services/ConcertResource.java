@@ -13,6 +13,7 @@ import proj.concert.service.mapper.PerformerMapper;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
+import javax.persistence.NoResultException;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
@@ -21,6 +22,7 @@ import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
@@ -184,21 +186,26 @@ public class ConcertResource {
     @POST
     @Path("/login")
     public Response login(UserDTO creds) {
-
-        String userName = creds.getUsername();
-        String userPassword = creds.getPassword();
-
-        TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
-        userQuery.setParameter("username", userName);
-        userQuery.setParameter("password", userPassword);
-        List<User> users = userQuery.getResultList();
-
-        if (!users.isEmpty()) {
-            Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth","auth"));
-            return builder.build();
+        try {
+            em.getTransaction().begin();
+            String userName = creds.getUsername();
+            String userPassword = creds.getPassword();
+            User user;
+            try {
+                user = em.createQuery("SELECT u FROM User u where u.username = :username AND u.password = :password", User.class)
+                        .setParameter("username", userName)
+                        .setParameter("password", userPassword)
+                        .setLockMode(LockModeType.PESSIMISTIC_READ)
+                        .getSingleResult();
+            } catch (NoResultException e) {
+                return Response.status(Response.Status.UNAUTHORIZED).build();
+            }
+            em.lock(user, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+            user.setSessionId(UUID.randomUUID());
+            em.getTransaction().commit();
+            return Response.ok().cookie(new NewCookie("auth", user.getSessionId().toString())).build();
+        } finally {
+            em.close();
         }
-
-        Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
-        return builder.build();
     }
 }
