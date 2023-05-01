@@ -21,6 +21,7 @@ import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
@@ -184,21 +185,45 @@ public class ConcertResource {
     @POST
     @Path("/login")
     public Response login(UserDTO creds) {
+        EntityManager em = PersistenceManager.instance().createEntityManager();
+        try {
+            String userName = creds.getUsername();
+            System.out.println("Test1");
+            String userPassword = creds.getPassword();
+            System.out.println("Test2");
+            TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
+            System.out.println("Test3");
+            userQuery.setParameter("username", userName);
+            System.out.println("Test4");
+            userQuery.setParameter("password", userPassword);
+            System.out.println("Test5");
+            List<User> users = userQuery.getResultList();
 
-        String userName = creds.getUsername();
-        String userPassword = creds.getPassword();
+            userQuery = em.createQuery("SELECT u FROM User u", User.class);
+            List<User> userList = userQuery.getResultList();
 
-        TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
-        userQuery.setParameter("username", userName);
-        userQuery.setParameter("password", userPassword);
-        List<User> users = userQuery.getResultList();
+            for (User user : userList) {
+                System.out.println(user.getId() + " " + user.getUsername() + " " + user.getPassword());
+            }
 
-        if (!users.isEmpty()) {
-            Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth","auth"));
+            if (!users.isEmpty()) {
+                System.out.println("Test6");
+                String authValue = UUID.randomUUID().toString(); // Generate a random UUID as the auth value
+                System.out.println("Test7");
+                Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth", authValue));
+                System.out.println("Test8");
+                return builder.build();
+            }
+
+            Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
+            System.out.println("Test9");
+            System.out.println(builder);
+            System.out.println("Test10");
+            System.out.println(builder.build());
+            System.out.println("Test11");
             return builder.build();
+        } finally {
+            em.close();
         }
-
-        Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
-        return builder.build();
     }
 }
