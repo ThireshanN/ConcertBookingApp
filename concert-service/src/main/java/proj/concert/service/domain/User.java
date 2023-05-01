@@ -8,6 +8,10 @@ import javax.persistence.*;
 @Entity
 @Table(name = "USERS")
 public class User {
+
+    @Version
+    private Long version;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

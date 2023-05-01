@@ -186,24 +186,43 @@ public class ConcertResource {
     @POST
     @Path("/login")
     public Response login(UserDTO creds) {
+        EntityManager em = PersistenceManager.instance().createEntityManager();
         try {
-            em.getTransaction().begin();
             String userName = creds.getUsername();
+            System.out.println("Test1");
             String userPassword = creds.getPassword();
-            User user;
-            try {
-                user = em.createQuery("SELECT u FROM User u where u.username = :username AND u.password = :password", User.class)
-                        .setParameter("username", userName)
-                        .setParameter("password", userPassword)
-                        .setLockMode(LockModeType.PESSIMISTIC_READ)
-                        .getSingleResult();
-            } catch (NoResultException e) {
-                return Response.status(Response.Status.UNAUTHORIZED).build();
+            System.out.println("Test2");
+            TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
+            System.out.println("Test3");
+            userQuery.setParameter("username", userName);
+            System.out.println("Test4");
+            userQuery.setParameter("password", userPassword);
+            System.out.println("Test5");
+            List<User> users = userQuery.getResultList();
+
+            userQuery = em.createQuery("SELECT u FROM User u", User.class);
+            List<User> userList = userQuery.getResultList();
+
+            for (User user : userList) {
+                System.out.println(user.getId() + " " + user.getUsername() + " " + user.getPassword());
             }
-            em.lock(user, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
-            user.setSessionId(UUID.randomUUID());
-            em.getTransaction().commit();
-            return Response.ok().cookie(new NewCookie("auth", user.getSessionId().toString())).build();
+
+            if (!users.isEmpty()) {
+                System.out.println("Test6");
+                String authValue = UUID.randomUUID().toString(); // Generate a random UUID as the auth value
+                System.out.println("Test7");
+                Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth", authValue));
+                System.out.println("Test8");
+                return builder.build();
+            }
+
+            Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
+            System.out.println("Test9");
+            System.out.println(builder);
+            System.out.println("Test10");
+            System.out.println(builder.build());
+            System.out.println("Test11");
+            return builder.build();
         } finally {
             em.close();
         }
