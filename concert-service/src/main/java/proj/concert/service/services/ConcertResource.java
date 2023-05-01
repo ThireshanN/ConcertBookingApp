@@ -13,6 +13,7 @@ import proj.concert.service.mapper.PerformerMapper;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
+import javax.persistence.NoResultException;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;

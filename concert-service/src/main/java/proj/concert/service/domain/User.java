@@ -1,6 +1,7 @@
 package proj.concert.service.domain;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import javax.persistence.*;
 
 
@@ -23,6 +24,12 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private Set<Reservation> reservations = new HashSet<>();
+
+    @Version
+    private Long version;
+
+    @Column(unique = true)
+    private UUID sessionId;
 
     // Constructors, getters, setters, and other methods
     public User() {
@@ -58,5 +65,13 @@ public class User {
 
     public void setReservations(Set<Reservation> bookings) {
         this.reservations = reservations;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
     }
 }
