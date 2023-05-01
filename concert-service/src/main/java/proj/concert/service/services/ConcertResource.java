@@ -189,15 +189,10 @@ public class ConcertResource {
         EntityManager em = PersistenceManager.instance().createEntityManager();
         try {
             String userName = creds.getUsername();
-            System.out.println("Test1");
             String userPassword = creds.getPassword();
-            System.out.println("Test2");
             TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
-            System.out.println("Test3");
             userQuery.setParameter("username", userName);
-            System.out.println("Test4");
             userQuery.setParameter("password", userPassword);
-            System.out.println("Test5");
             List<User> users = userQuery.getResultList();
 
             userQuery = em.createQuery("SELECT u FROM User u", User.class);
@@ -208,20 +203,15 @@ public class ConcertResource {
             }
 
             if (!users.isEmpty()) {
-                System.out.println("Test6");
                 String authValue = UUID.randomUUID().toString(); // Generate a random UUID as the auth value
-                System.out.println("Test7");
                 Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth", authValue));
-                System.out.println("Test8");
+
                 return builder.build();
             }
 
             Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
-            System.out.println("Test9");
             System.out.println(builder);
-            System.out.println("Test10");
             System.out.println(builder.build());
-            System.out.println("Test11");
             return builder.build();
         } finally {
             em.close();
