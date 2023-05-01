@@ -25,8 +25,7 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private Set<Reservation> reservations = new HashSet<>();
 
-    @Version
-    private Long version;
+
 
     @Column(unique = true)
     private UUID sessionId;
@@ -67,11 +66,4 @@ public class User {
         this.reservations = reservations;
     }
 
-    public UUID getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(UUID sessionId) {
-        this.sessionId = sessionId;
-    }
 }
