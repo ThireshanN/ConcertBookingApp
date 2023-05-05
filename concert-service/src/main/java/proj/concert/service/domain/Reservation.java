@@ -37,10 +37,9 @@ public class Reservation {
     public Reservation() {
     }
 
-    public Reservation(User user, long concertId, LocalDateTime date) {
-        this.user = user;
+    public Reservation(long concertId, LocalDateTime date) {
         this.concertId = concertId;
-        this.concertDate = concertDate;
+        this.concertDate = date;
     }
 
     public Long getId() {
@@ -78,5 +77,4 @@ public class Reservation {
     public List<Seat> getSeats() {
         return seats;
     }
-
 }

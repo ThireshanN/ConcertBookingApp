@@ -1,7 +1,5 @@
 package proj.concert.service.domain;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import javax.persistence.*;
 
 
@@ -22,10 +20,8 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private Set<Reservation> reservations = new HashSet<>();
-
-
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Reservation> reservations = new ArrayList<>();
 
     @Column(unique = true)
     private UUID sessionId;
@@ -58,12 +54,14 @@ public class User {
         this.password = password;
     }
 
-    public Set<Reservation> getReservations() {
-        return reservations;
-    }
+
 
     public void setReservations(Set<Reservation> bookings) {
         this.reservations = reservations;
     }
 
+    public void addReservation(Reservation reservation) {
+        reservations.add(reservation);
+        reservation.setUser(this);
+    }
 }

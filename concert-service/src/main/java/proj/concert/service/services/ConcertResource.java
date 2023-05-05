@@ -1,14 +1,9 @@
 package proj.concert.service.services;
 
 import org.apache.log4j.Priority;
-import proj.concert.common.dto.ConcertSummaryDTO;
-import proj.concert.common.dto.ConcertDTO;
-import proj.concert.common.dto.UserDTO;
-import proj.concert.service.domain.Concert;
-import proj.concert.service.domain.User;
+import proj.concert.common.dto.*;
+import proj.concert.service.domain.*;
 import proj.concert.service.mapper.ConcertMapper;
-import proj.concert.service.domain.Performer;
-import proj.concert.common.dto.PerformerDTO;
 import proj.concert.service.mapper.PerformerMapper;
 
 import javax.persistence.EntityManager;
@@ -16,10 +11,8 @@ import javax.persistence.LockModeType;
 import javax.persistence.NoResultException;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
-import javax.ws.rs.core.GenericEntity;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.NewCookie;
-import javax.ws.rs.core.Response;
+import javax.ws.rs.core.*;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -213,6 +206,57 @@ public class ConcertResource {
             System.out.println(builder);
             System.out.println(builder.build());
             return builder.build();
+        } finally {
+            em.close();
+        }
+    }
+
+    @POST
+    @Path("/bookings")
+    public Response createNewBooking(BookingRequestDTO bookingDetails, @CookieParam("auth") Cookie authCookie) {
+        EntityManager em = PersistenceManager.instance().createEntityManager();
+        User currentUser;
+        if (authCookie == null) {
+            return Response.status(Response.Status.UNAUTHORIZED).build();
+        }
+        try {
+            em.getTransaction().begin();
+            currentUser = em.createQuery("SELECT u FROM User u where u.sessionId = :sessionId", User.class)
+                    .setParameter("sessionId", UUID.fromString(authCookie.getValue()))
+                    .setLockMode(LockModeType.OPTIMISTIC)
+                    .getSingleResult();
+            em.getTransaction().commit();
+        } catch (NoResultException e) {
+            em.getTransaction().rollback();
+            return Response.status(Response.Status.UNAUTHORIZED).build();
+        }
+        em.getTransaction().begin();
+        try {
+            Concert targetConcert = em.find(Concert.class, bookingDetails.getConcertId(), LockModeType.PESSIMISTIC_READ);
+            if (targetConcert == null || !targetConcert.getDates().contains(bookingDetails.getDate())) {
+                return Response.status(Response.Status.BAD_REQUEST).build();
+            }
+            List<Seat> openRequestedSeats = em.createQuery("SELECT s FROM Seat s WHERE s.label IN :seatLabels AND s.date = :eventDate AND s.isBooked = false", Seat.class)
+                    .setParameter("seatLabels", bookingDetails.getSeatLabels())
+                    .setParameter("eventDate", bookingDetails.getDate())
+                    .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                    .getResultList();
+            if (openRequestedSeats.size() != bookingDetails.getSeatLabels().size()) {
+                em.getTransaction().rollback();
+                return Response.status(Response.Status.FORBIDDEN).build();
+            }
+            Reservation newReservation = new Reservation(bookingDetails.getConcertId(), bookingDetails.getDate());
+            newReservation.getSeats().addAll(openRequestedSeats);
+            openRequestedSeats.forEach(seat -> seat.setIsBooked(true));
+            currentUser.addReservation(newReservation);
+            em.persist(newReservation);
+            em.getTransaction().commit();
+            return Response.created(URI.create("/concert-service/bookings/" + newReservation.getId())).build();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            return Response.serverError().build();
         } finally {
             em.close();
         }
