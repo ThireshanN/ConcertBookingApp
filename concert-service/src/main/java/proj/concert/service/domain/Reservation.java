@@ -1,9 +1,7 @@
 package proj.concert.service.domain;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import javax.persistence.*;
 
@@ -30,6 +28,9 @@ public class Reservation {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @OneToMany(fetch = FetchType.EAGER)
+    private List<Seat> seats = new ArrayList<>();
 
     // Constructors, getters, setters, and other methods
 
@@ -72,6 +73,10 @@ public class Reservation {
 
     public void setDate(LocalDateTime date) {
         this.concertDate = date;
+    }
+
+    public List<Seat> getSeats() {
+        return seats;
     }
 
 }
