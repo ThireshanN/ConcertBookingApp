@@ -3,6 +3,7 @@ package proj.concert.service.services;
 import org.apache.log4j.Priority;
 import proj.concert.common.dto.*;
 import proj.concert.service.domain.*;
+import proj.concert.service.mapper.BookingMapper;
 import proj.concert.service.mapper.ConcertMapper;
 import proj.concert.service.mapper.PerformerMapper;
 
@@ -260,5 +261,54 @@ public class ConcertResource {
         } finally {
             em.close();
         }
+    }
+
+    private User authenticateUser(String authCookie) {
+        if (authCookie == null) {
+            return null;
+        }
+
+        try {
+            UUID sessionId = UUID.fromString(authCookie);
+            return getUserBySessionId(sessionId);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public User getUserBySessionId(UUID sessionId) {
+        TypedQuery<User> query = em.createQuery("SELECT u FROM User u WHERE u.sessionId = :sessionId", User.class);
+        query.setParameter("sessionId", sessionId);
+        try {
+            return query.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    public List<Reservation> getBookingsByUser(User user) {
+        TypedQuery<Reservation> query = em.createQuery("SELECT b FROM Reservation b WHERE b.user = :user", Reservation.class);
+        query.setParameter("user", user);
+        return query.getResultList();
+    }
+
+    @Path("/bookings")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<BookingDTO> getBookings(@CookieParam("auth") String authCookie) {
+        if (authCookie == null) {
+            throw new NotAuthorizedException("User not logged in");
+        }
+        User user = authenticateUser(authCookie);
+        if (user == null) {
+            throw new NotAuthorizedException("Invalid authentication token");
+        }
+
+        List<Reservation> bookings = getBookingsByUser(user);
+        List<BookingDTO> bookingDTOs = new ArrayList<>();
+        for (Reservation booking : bookings) {
+            bookingDTOs.add(BookingMapper.toDTO(booking));
+        }
+        return bookingDTOs;
     }
 }
