@@ -3,6 +3,7 @@ package proj.concert.service.services;
 import org.apache.log4j.Priority;
 import proj.concert.common.dto.*;
 import proj.concert.service.domain.*;
+import proj.concert.service.jaxrs.LocalDateTimeParam;
 import proj.concert.service.mapper.BookingMapper;
 import proj.concert.service.mapper.ConcertMapper;
 import proj.concert.service.mapper.PerformerMapper;
@@ -14,12 +15,12 @@ import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
+import proj.concert.service.mapper.SeatMapper;
 
 @Path("/concert-service")
 @Produces(MediaType.APPLICATION_JSON)
@@ -308,5 +309,51 @@ public class ConcertResource {
             bookingDTOs.add(BookingMapper.toDTO(booking));
         }
         return bookingDTOs;
+    }
+
+    @GET
+    @Path("/seats/{date}")
+    public Response getSeatsByDateAndStatus(@PathParam("date") String dateString, @DefaultValue("Any") @QueryParam("status") String status) {
+        LocalDateTime date = new LocalDateTimeParam(dateString).getLocalDateTime();
+        EntityManager em = PersistenceManager.instance().createEntityManager();
+        try {
+            em.getTransaction().begin();
+
+            Boolean isBooked = null;
+            if ("Booked".equalsIgnoreCase(status)) {
+                isBooked = true;
+            } else if ("Unbooked".equalsIgnoreCase(status)) {
+                isBooked = false;
+            }
+
+            List<Seat> seats;
+            if (isBooked == null) {
+                seats = em.createQuery("SELECT s FROM Seat s WHERE s.date = :date", Seat.class)
+                        .setParameter("date", date)
+                        .getResultList();
+            } else {
+                seats = em.createQuery("SELECT s FROM Seat s WHERE s.date = :date AND s.isBooked = :isBooked", Seat.class)
+                        .setParameter("date", date)
+                        .setParameter("isBooked", isBooked)
+                        .getResultList();
+            }
+
+            if (seats.isEmpty()) {
+                em.getTransaction().commit();
+                return Response.ok(Collections.emptyList()).build();
+            }
+
+            Set<SeatDTO> dtoSeats = seats.stream().map(SeatMapper::toDTO).collect(Collectors.toSet());
+            em.getTransaction().commit();
+
+            GenericEntity<Set<SeatDTO>> out = new GenericEntity<Set<SeatDTO>>(dtoSeats) {};
+            return Response.ok(out).build();
+
+        } finally {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().commit();
+            }
+            em.close();
+        }
     }
 }
