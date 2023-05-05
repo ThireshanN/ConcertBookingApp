@@ -54,14 +54,20 @@ public class User {
         this.password = password;
     }
 
-
-
     public void setReservations(Set<Reservation> bookings) {
         this.reservations = reservations;
+    }
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
     }
 
     public void addReservation(Reservation reservation) {
         reservations.add(reservation);
         reservation.setUser(this);
     }
+
 }

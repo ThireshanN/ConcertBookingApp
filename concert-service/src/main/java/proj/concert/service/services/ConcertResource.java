@@ -182,31 +182,22 @@ public class ConcertResource {
     public Response login(UserDTO creds) {
         EntityManager em = PersistenceManager.instance().createEntityManager();
         try {
-            String userName = creds.getUsername();
-            String userPassword = creds.getPassword();
-            TypedQuery<User> userQuery = em.createQuery("SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class);
-            userQuery.setParameter("username", userName);
-            userQuery.setParameter("password", userPassword);
-            List<User> users = userQuery.getResultList();
-
-            userQuery = em.createQuery("SELECT u FROM User u", User.class);
-            List<User> userList = userQuery.getResultList();
-
-            for (User user : userList) {
-                System.out.println(user.getId() + " " + user.getUsername() + " " + user.getPassword());
+            em.getTransaction().begin();
+            TypedQuery<User> queryForUser = em.createQuery("SELECT u FROM User u where u.username = :username AND u.password = :password", User.class)
+                    .setParameter("username", creds.getUsername())
+                    .setParameter("password", creds.getPassword())
+                    .setLockMode(LockModeType.PESSIMISTIC_READ);
+            User user;
+            try {
+                user = queryForUser.getSingleResult();
+            } catch (NoResultException e) {
+                em.getTransaction().rollback();
+                return Response.status(Response.Status.UNAUTHORIZED).build();
             }
-
-            if (!users.isEmpty()) {
-                String authValue = UUID.randomUUID().toString(); // Generate a random UUID as the auth value
-                Response.ResponseBuilder builder = Response.ok().cookie(new NewCookie("auth", authValue));
-
-                return builder.build();
-            }
-
-            Response.ResponseBuilder builder = Response.status(Response.Status.UNAUTHORIZED);
-            System.out.println(builder);
-            System.out.println(builder.build());
-            return builder.build();
+            user.setSessionId(UUID.randomUUID());
+            em.lock(user, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+            em.getTransaction().commit();
+            return Response.ok().cookie(new NewCookie("auth", user.getSessionId().toString())).build();
         } finally {
             em.close();
         }
@@ -220,6 +211,7 @@ public class ConcertResource {
         if (authCookie == null) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
+
         try {
             em.getTransaction().begin();
             currentUser = em.createQuery("SELECT u FROM User u where u.sessionId = :sessionId", User.class)
@@ -231,21 +223,25 @@ public class ConcertResource {
             em.getTransaction().rollback();
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
+
         em.getTransaction().begin();
         try {
             Concert targetConcert = em.find(Concert.class, bookingDetails.getConcertId(), LockModeType.PESSIMISTIC_READ);
             if (targetConcert == null || !targetConcert.getDates().contains(bookingDetails.getDate())) {
                 return Response.status(Response.Status.BAD_REQUEST).build();
             }
+
             List<Seat> openRequestedSeats = em.createQuery("SELECT s FROM Seat s WHERE s.label IN :seatLabels AND s.date = :eventDate AND s.isBooked = false", Seat.class)
                     .setParameter("seatLabels", bookingDetails.getSeatLabels())
                     .setParameter("eventDate", bookingDetails.getDate())
                     .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                     .getResultList();
+
             if (openRequestedSeats.size() != bookingDetails.getSeatLabels().size()) {
                 em.getTransaction().rollback();
                 return Response.status(Response.Status.FORBIDDEN).build();
             }
+
             Reservation newReservation = new Reservation(bookingDetails.getConcertId(), bookingDetails.getDate());
             newReservation.getSeats().addAll(openRequestedSeats);
             openRequestedSeats.forEach(seat -> seat.setIsBooked(true));
@@ -253,6 +249,7 @@ public class ConcertResource {
             em.persist(newReservation);
             em.getTransaction().commit();
             return Response.created(URI.create("/concert-service/bookings/" + newReservation.getId())).build();
+
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
@@ -262,6 +259,7 @@ public class ConcertResource {
             em.close();
         }
     }
+
 
     private User authenticateUser(String authCookie) {
         if (authCookie == null) {
