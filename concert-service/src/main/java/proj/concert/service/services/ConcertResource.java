@@ -310,7 +310,39 @@ public class ConcertResource {
         }
         return bookingDTOs;
     }
+    @GET
+    @Path("/bookings/{id}")
+    public Response getBooking(@PathParam("id") Long id, @CookieParam("auth") Cookie authCookie) {
 
+        try {
+            em.getTransaction().begin();
+            User user = null;
+            if (authCookie != null) {
+                try {
+                    user = em.createQuery("SELECT u FROM User u where u.sessionId = :uuid", User.class)
+                            .setParameter("uuid", UUID.fromString(authCookie.getValue()))
+                            .setLockMode(LockModeType.OPTIMISTIC)
+                            .getSingleResult();
+                } catch (NoResultException e) {
+                    return Response.status(Response.Status.UNAUTHORIZED).build();
+                }
+            }
+            if (user == null) {
+                return Response.status(Response.Status.UNAUTHORIZED).build();
+            }
+            Reservation booking = em.find(Reservation.class, id, LockModeType.PESSIMISTIC_READ);
+            if (booking == null || !booking.getUser().equals(user)) {
+                return Response.status(Response.Status.FORBIDDEN).build();
+            }
+            BookingDTO dtoBooking = BookingMapper.toDTO(booking);
+            return Response.ok(dtoBooking).build();
+        } finally {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().commit();
+            }
+            em.close();
+        }
+    }
     @GET
     @Path("/seats/{date}")
     public Response getSeatsByDateAndStatus(@PathParam("date") String dateString, @DefaultValue("Any") @QueryParam("status") String status) {
