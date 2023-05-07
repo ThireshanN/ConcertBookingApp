@@ -13,6 +13,7 @@ The final task delegation was planned and executed as follows:
 - Subscription and notification services - Josephine was tasked with working on these services.
 - Refactoring - Medhavi and Thireshan worked on pulling the final working code and tidying up the files plus making the code more readable.
 
+Pls Note: The parts that state Medhavi and Thireshan worked together was a joint effort by both of them and they both worked on the code, so it's difficult to be more specific in task allocations as they both worked together on call. 
 Are team communicated mostly through Discord for simple communications. We also used Issues to report more important events, record more important notes and record major/difficult errors that we were stuck on. We found voice calls to be the most efficient way to help each other as we were able to share screen and be able to see what other team members were doing live.
 
 
