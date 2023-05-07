@@ -2,11 +2,16 @@ package proj.concert.service.services;
 
 import org.apache.log4j.Priority;
 import proj.concert.common.dto.*;
+import proj.concert.common.dto.ConcertInfoSubscriptionDTO;
 import proj.concert.service.domain.*;
 import proj.concert.service.jaxrs.LocalDateTimeParam;
 import proj.concert.service.mapper.BookingMapper;
 import proj.concert.service.mapper.ConcertMapper;
 import proj.concert.service.mapper.PerformerMapper;
+import proj.concert.service.jaxrs.ConcertSubscription;
+import proj.concert.common.dto.ConcertInfoNotificationDTO;
+import proj.concert.common.dto.ConcertInfoSubscriptionDTO;
+import proj.concert.service.util.TheatreLayout;
 
 import javax.persistence.EntityManager;
 import javax.persistence.LockModeType;
@@ -14,11 +19,24 @@ import javax.persistence.NoResultException;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
+import javax.ws.rs.core.NewCookie;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import java.net.URI;
-import java.time.LocalDateTime;
+
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.LinkedList;
 
+import java.time.LocalDateTime;
+
+import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import proj.concert.service.mapper.SeatMapper;
 
@@ -27,7 +45,8 @@ import proj.concert.service.mapper.SeatMapper;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ConcertResource {
 
-    private static final Logger LOGGER = Logger.getLogger(ConcertResource.class);
+    private static final Logger LOGGER = LogManager.getLogger(ConcertResource.class);
+
     @GET
     @Path("/concerts")
     public Response getAllConcerts() {
@@ -46,7 +65,8 @@ public class ConcertResource {
                 concertDTOS.add(ConcertMapper.toDTO(concert));
             }
             em.getTransaction().commit();
-            GenericEntity<List<ConcertDTO>> out = new GenericEntity<List<ConcertDTO>>(concertDTOS) {};
+            GenericEntity<List<ConcertDTO>> out = new GenericEntity<List<ConcertDTO>>(concertDTOS) {
+            };
             return Response.ok(out).build();
         } catch (Exception e) { //block to handle exceptions, rolling back the transaction in case of an error.
             if (em.getTransaction().isActive()) {
@@ -104,7 +124,8 @@ public class ConcertResource {
                 return Response.noContent().build();
             }
 
-            GenericEntity<List<ConcertSummaryDTO>> entity = new GenericEntity<List<ConcertSummaryDTO>>(summaries) {};
+            GenericEntity<List<ConcertSummaryDTO>> entity = new GenericEntity<List<ConcertSummaryDTO>>(summaries) {
+            };
 
             em.getTransaction().commit(); // Commit the transaction
             return Response.ok(entity).build();
@@ -136,10 +157,11 @@ public class ConcertResource {
 
             List<PerformerDTO> performerDTOs = new ArrayList<>();
 
-            for(Performer performer:performers){
+            for (Performer performer : performers) {
                 performerDTOs.add(PerformerMapper.toDTO(performer));
             }
-            GenericEntity<List<PerformerDTO>> entity = new GenericEntity<List<PerformerDTO>>(performerDTOs) {};
+            GenericEntity<List<PerformerDTO>> entity = new GenericEntity<List<PerformerDTO>>(performerDTOs) {
+            };
 
             return Response.ok(entity).build();
         } catch (Exception e) {
@@ -248,6 +270,15 @@ public class ConcertResource {
             openRequestedSeats.forEach(seat -> seat.setIsBooked(true));
             currentUser.addReservation(newReservation);
             em.persist(newReservation);
+
+            //Reservation made, check if remaining seats meet notification threshold
+            int seatsRemaining = em.createQuery("SELECT COUNT(s) FROM Seat s WHERE s.date = :date AND s.isBooked = false", Long.class)
+                    .setParameter("date", bookingDetails.getDate())
+                    .getSingleResult()
+                    .intValue();
+            subscriptionNotifier(bookingDetails.getDate(), seatsRemaining);
+
+
             em.getTransaction().commit();
             return Response.created(URI.create("/concert-service/bookings/" + newReservation.getId())).build();
 
@@ -274,6 +305,7 @@ public class ConcertResource {
             return null;
         }
     }
+
 
     public User getUserBySessionId(UUID sessionId) {
         TypedQuery<User> query = em.createQuery("SELECT u FROM User u WHERE u.sessionId = :sessionId", User.class);
@@ -310,6 +342,7 @@ public class ConcertResource {
         }
         return bookingDTOs;
     }
+
     @GET
     @Path("/bookings/{id}")
     public Response getBooking(@PathParam("id") Long id, @CookieParam("auth") Cookie authCookie) {
@@ -343,6 +376,7 @@ public class ConcertResource {
             em.close();
         }
     }
+
     @GET
     @Path("/seats/{date}")
     public Response getSeatsByDateAndStatus(@PathParam("date") String dateString, @DefaultValue("Any") @QueryParam("status") String status) {
@@ -378,7 +412,8 @@ public class ConcertResource {
             Set<SeatDTO> dtoSeats = seats.stream().map(SeatMapper::toDTO).collect(Collectors.toSet());
             em.getTransaction().commit();
 
-            GenericEntity<Set<SeatDTO>> out = new GenericEntity<Set<SeatDTO>>(dtoSeats) {};
+            GenericEntity<Set<SeatDTO>> out = new GenericEntity<Set<SeatDTO>>(dtoSeats) {
+            };
             return Response.ok(out).build();
 
         } finally {
@@ -387,5 +422,71 @@ public class ConcertResource {
             }
             em.close();
         }
+    }
+
+    private static final ConcurrentHashMap<LocalDateTime, LinkedList<ConcertSubscription>> subscriptions = new ConcurrentHashMap<>();
+    @POST
+    @Path("/subscribe/concertInfo")
+    public void subscribeToConcert(@Suspended AsyncResponse sub, @CookieParam("auth") Cookie authCookie, ConcertInfoSubscriptionDTO request) {
+        EntityManager em = PersistenceManager.instance().createEntityManager();
+        // Check if user is signed in
+        try {
+            User user = null;
+            if (authCookie != null) {
+                em.getTransaction().begin();
+                try {
+                    user = em.createQuery("SELECT u FROM User u where u.sessionId = :uuid", User.class)
+                            .setParameter("uuid", UUID.fromString(authCookie.getValue()))
+                            .setLockMode(LockModeType.OPTIMISTIC)
+                            .getSingleResult();
+                } catch (NoResultException e) {
+                    sub.resume(Response.status(Status.UNAUTHORIZED).build());
+                    return;
+                }
+            }
+            if (user == null) {
+                sub.resume(Response.status(Status.UNAUTHORIZED).build());
+                return;
+            }
+
+            // Check if concert exists
+            Concert concert = em.find(Concert.class, request.getConcertId(), LockModeType.PESSIMISTIC_READ);
+            if (concert == null || !concert.getDates().contains(request.getDate())) {
+                sub.resume(Response.status(Status.BAD_REQUEST).build());
+                return;
+            }
+        } finally {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().commit();
+            }
+            em.close();
+        }
+        // synchronized block to prevent race condition
+        synchronized (subscriptions) {
+            if (!subscriptions.contains(request.getDate())) {
+                subscriptions.put(request.getDate(), new LinkedList<>());
+            }
+        }
+        subscriptions.get(request.getDate()).add(new ConcertSubscription(sub, request.getPercentageBooked()));
+    }
+
+    private static final ExecutorService threadPool = Executors.newSingleThreadExecutor();
+    private void subscriptionNotifier(LocalDateTime concertDateTime, int seatsRemaining) {
+        // Execute the task in a separate thread
+        threadPool.submit(() -> {
+            // Calculate the percentage of booked seats
+            double percentageBooked = 1.0 - (double) seatsRemaining / TheatreLayout.NUM_SEATS_IN_THEATRE;
+
+            List<ConcertSubscription> concertSubscriptions = subscriptions.get(concertDateTime);
+            for (Iterator<ConcertSubscription> iterator = concertSubscriptions.iterator(); iterator.hasNext(); ) {
+                ConcertSubscription sub = iterator.next();
+
+                // Check if the percentage of booked seats meets the notification threshold. Send notif if met.
+                if (percentageBooked >= sub.percentageForNotif) {
+                    iterator.remove();
+                    sub.response.resume(Response.ok(new ConcertInfoNotificationDTO(seatsRemaining)).build());
+                }
+            }
+        });
     }
 }
