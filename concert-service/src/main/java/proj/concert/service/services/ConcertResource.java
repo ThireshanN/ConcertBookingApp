@@ -45,6 +45,7 @@ import proj.concert.service.mapper.SeatMapper;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ConcertResource {
 
+    //static logger for logging events and messages
     private static final Logger LOGGER = LogManager.getLogger(ConcertResource.class);
 
     @GET
@@ -52,10 +53,11 @@ public class ConcertResource {
     public Response getAllConcerts() {
         EntityManager em = PersistenceManager.instance().createEntityManager();
         try {
+            //starting transaction for databese queries
             em.getTransaction().begin();
             List<Concert> concerts = em.createQuery("SELECT c FROM Concert c", Concert.class)
                     .getResultList();
-
+            // if there are no concerts found then return a Response with a noContent status
             if (concerts.isEmpty()) {
                 return Response.noContent().build();
             }
@@ -64,6 +66,8 @@ public class ConcertResource {
             for (Concert concert : concerts) {
                 concertDTOS.add(ConcertMapper.toDTO(concert));
             }
+
+            // Commit the transaction and create a GenericEntity with the concertDTOS list as its entity body
             em.getTransaction().commit();
             GenericEntity<List<ConcertDTO>> out = new GenericEntity<List<ConcertDTO>>(concertDTOS) {
             };
@@ -88,17 +92,18 @@ public class ConcertResource {
             entityManager.getTransaction().begin();
             Concert foundConcert = entityManager.find(Concert.class, id);
             entityManager.getTransaction().commit();
-
+            //if no concert is found, return a Not_found response
             if (foundConcert == null) {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
-
+            // Convert the Concert object to a ConcertDTO object and return it as the Response entity
             ConcertDTO concertDTO = ConcertMapper.toDTO(foundConcert);
             return Response.ok(concertDTO).build();
         } catch (Exception e) { //block to handle exceptions, rolling back the transaction in case of an error.
             if (entityManager.getTransaction().isActive()) {
                 entityManager.getTransaction().rollback();
             }
+            // Return a Response with an INTERNAL_SERVER_ERROR status and no entity body
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         } finally {
             entityManager.close();
@@ -124,6 +129,7 @@ public class ConcertResource {
                 return Response.noContent().build();
             }
 
+            // Create a GenericEntity containing the list of ConcertSummaryDTOs and return a 200 OK response
             GenericEntity<List<ConcertSummaryDTO>> entity = new GenericEntity<List<ConcertSummaryDTO>>(summaries) {
             };
 
@@ -134,6 +140,7 @@ public class ConcertResource {
             LOGGER.log(Priority.ERROR, "An error occurred while processing the request.", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("An error occurred while processing the request.").build();
         } finally {
+            // Rollback the transaction if it is still active and close the EntityManager
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
@@ -148,13 +155,16 @@ public class ConcertResource {
 
         try {
             entityManager.getTransaction().begin();
+            // Query the Performer entities and retrieve the results as a list
             List<Performer> performers = entityManager.createQuery("SELECT p FROM Performer p", Performer.class).getResultList();
+            // Commit the transaction
             entityManager.getTransaction().commit();
-
+            // If the list of performers is empty, return a No Content response
             if (performers.isEmpty()) {
                 return Response.noContent().build();
             }
 
+            // Convert the list of Performer entities to a list of PerformerDTOs
             List<PerformerDTO> performerDTOs = new ArrayList<>();
 
             for (Performer performer : performers) {
@@ -166,8 +176,10 @@ public class ConcertResource {
             return Response.ok(entity).build();
         } catch (Exception e) {
             if (entityManager.getTransaction().isActive()) {
+                // If an exception occurs, roll back the transaction
                 entityManager.getTransaction().rollback();
             }
+            //return a Internal Server Error response
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         } finally {
             entityManager.close();
@@ -184,16 +196,20 @@ public class ConcertResource {
             Performer foundPerformer = entityManager.find(Performer.class, id);
             entityManager.getTransaction().commit();
 
+            // If the Performer was not found, return a NOT_FOUND response
             if (foundPerformer == null) {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
 
+            // Map the Performer to a DTO and return it in the response body
             PerformerDTO performerDTO = PerformerMapper.toDTO(foundPerformer);
             return Response.ok(performerDTO).build();
         } catch (Exception e) {
+            // If an error occurs, log the exception return an INTERNAL_SERVER_ERROR response
             if (entityManager.getTransaction().isActive()) {
                 entityManager.getTransaction().rollback();
             }
+            //return an INTERNAL_SERVER_ERROR response
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         } finally {
             entityManager.close();
