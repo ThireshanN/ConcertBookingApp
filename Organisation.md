@@ -17,8 +17,10 @@ Are team communicated mostly through Discord for simple communications. We also 
 
 
 2. Short description of the strategy used to minimise the chance of concurrency errors in program execution (2-3 sentences)
+
 Strategies we used to minimise concurrency errors in the program execution were Pessismistic/Optimistic locking and Transaction management of the EntityManager.
 We used pessimistic locking such as LockModeType.PESSIMISTIC_READ and LockModeType.PESSIMISTIC_WRITE to ensure that transactions cannot make changes over one another until the first transaction has completed; likewise with optimistic locking which we roll back a transaction if an exception is thrown. Transaction management to begin and commit transactions were used to ensure that transactions are atomic and can also be rolled back when an exception or conflict occurs.
 
 3. Short description of how the domain model is organised (2-3 sentences)
+
 The domain model of the concert booking web app is organised into five JPA entities: Concert, Performer, Reservation, Seat, and User, each mapped to a corresponding database table using JPA annotations. We connected the entities through well-defined relationships, using various annotations such as @OneToMany, @ManyToOne, @OneToOne, and @ManyToMany, alongside FetchType and CascadeType options to optimize data retrieval and manage entity state transitions. This organisation allowed for a structured representation of the concert booking process while also ensuring efficient data access.
