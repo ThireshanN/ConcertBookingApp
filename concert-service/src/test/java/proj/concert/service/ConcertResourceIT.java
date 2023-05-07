@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
 
 public class ConcertResourceIT {
 
-    private static final String WEB_SERVICE_URI = "http://localhost:10000/webservice/services/concert-service";
+    private static final String WEB_SERVICE_URI = "http://localhost:10000/services/concert-service";
     private Client client;
 
     /**
